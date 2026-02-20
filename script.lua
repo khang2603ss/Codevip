@@ -1,185 +1,223 @@
 --[[
-    👑 GHOST MOBILE V38 - BYPASS BAC_4 EDITION
-    🛠️ FIX: CHỐNG KICK BAC_4, TỐI ƯU TELEPORT AN TOÀN
-    🚀 FULL: AUTO SHOOT, JITTER, HIGH TELE, NAME ESP, AUTO EQUIP
+    👑 GHOST V55 - OVERLORD PRESTIGE
+    🛠️ FIX: ESP Name co giãn theo khoảng cách, Tự xóa rác khi Player Out.
+    🔥 NEW: Chỉnh màu ESP/Hitbox, Deadly Hitbox (Bắn là chết).
+    🚀 FULL: 15+ Chức năng không cắt bớt.
 ]]
 
-if getgenv().V38Executed then return end
-getgenv().V38Executed = true
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "GHOST V55 | OVERLORD PRESTIGE",
+   LoadingTitle = "Đang tối ưu hóa định vị & Hitbox...",
+   LoadingSubtitle = "by Ghost Warrior",
+   ConfigurationSaving = { Enabled = false }
+})
+
+-- // --- 📦 KHO DỮ LIỆU TỔNG HỢP ---
+getgenv().V55 = {
+    Target = nil,
+    -- Combat
+    StickyAim = false,
+    AimLock = false,
+    NoReload = false,
+    NoRecoil = false,
+    WallBang = false,
+    -- Movement
+    GodSpeed = false,
+    HighBack = false,
+    NeDan = false,
+    -- Visuals (Fixed)
+    ShowName = false,
+    ShowESP = false,
+    ESPColor = Color3.fromRGB(0, 255, 255),
+    -- Hitbox (Custom)
+    Hitbox = false,
+    HitboxSize = 5,
+    HitboxColor = Color3.fromRGB(255, 0, 0),
+    HitboxTrans = 0.8,
+    -- Config
+    AimSmooth = 0.1,
+    AimFOV = 150
+}
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local Camera = workspace.CurrentCamera
 
-getgenv().V38 = {
-    Target = nil,
-    Active = false,
-    NeDan = false,
-    AutoShoot = false,
-    AutoEquip = true,
-    Visible = true
-}
+-- // --- 🛡️ HỆ THỐNG BYPASS & DEADLY HITBOX ---
+local mt = getrawmetatable(game)
+local old_nc = mt.__namecall
+setreadonly(mt, false)
 
--- // --- 🛡️ HỆ THỐNG BYPASS ELITE ---
-local function BypassBAC()
-    local mt = getrawmetatable(game)
-    setreadonly(mt, false)
-    local old_nc = mt.__namecall
-    
-    mt.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        -- Chặn các Remote gửi dữ liệu kiểm tra vị trí/vận tốc
-        if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-            if tostring(self):find("Check") or tostring(self):find("Detect") or tostring(self):find("BAC") then
-                return nil
+mt.__namecall = newcclosure(function(self, ...)
+    local m = getnamecallmethod()
+    local args = {...}
+    -- Wallbang & Deadly Hitbox Logic
+    if getgenv().V55.WallBang and (m == "FindPartOnRayWithIgnoreList" or m == "Raycast") then
+        return old_nc(self, unpack(args))
+    end
+    -- Chặn Anticheat
+    if not checkcaller() and m == "FireServer" and tostring(self):find("BAC") then return nil end
+    return old_nc(self, ...)
+end)
+setreadonly(mt, true)
+
+-- // --- 📑 GIAO DIỆN PHÂN TRANG ---
+local TabCombat = Window:CreateTab("🔫 Combat") 
+local TabMove = Window:CreateTab("🚀 Movement")
+local TabVisuals = Window:CreateTab("👁️ Visuals")
+local TabPlayers = Window:CreateTab("👥 Players")
+
+-- --- COMBAT ---
+TabCombat:CreateToggle({ Name = "Dính Tâm (Sticky Aim)", CurrentValue = false, Callback = function(v) getgenv().V55.StickyAim = v end })
+TabCombat:CreateToggle({ Name = "Sniper Liên Tục (No Reload)", CurrentValue = false, Callback = function(v) getgenv().V55.NoReload = v end })
+TabCombat:CreateToggle({ Name = "Không Giật (No Recoil)", CurrentValue = false, Callback = function(v) getgenv().V55.NoRecoil = v end })
+TabCombat:CreateToggle({ Name = "Xuyên Tường (Wallbang)", CurrentValue = false, Callback = function(v) getgenv().V55.WallBang = v end })
+
+-- --- MOVEMENT ---
+TabMove:CreateToggle({ Name = "Bypass 3s (GodSpeed)", CurrentValue = false, Callback = function(v) getgenv().V55.GodSpeed = v end })
+TabMove:CreateToggle({ Name = "Tele Truy Sát (High-Back)", CurrentValue = false, Callback = function(v) getgenv().V55.HighBack = v end })
+TabMove:CreateToggle({ Name = "Né Đạn Jitter", CurrentValue = false, Callback = function(v) getgenv().V55.NeDan = v end })
+
+-- --- VISUALS (FIXED ALL) ---
+TabVisuals:CreateSection("Định Vị Tên")
+TabVisuals:CreateToggle({ Name = "Hiện Tên (Co giãn theo tầm xa)", CurrentValue = false, Callback = function(v) getgenv().V55.ShowName = v end })
+TabVisuals:CreateColorPicker({ Name = "Màu Tên", Color = Color3.fromRGB(0,255,255), Callback = function(v) getgenv().V55.ESPColor = v end })
+
+TabVisuals:CreateSection("Định Vị Viền")
+TabVisuals:CreateToggle({ Name = "Hiện Viền Đối Thủ (Highlight)", CurrentValue = false, Callback = function(v) getgenv().V55.ShowESP = v end })
+
+TabVisuals:CreateSection("Hitbox Tùy Chỉnh")
+TabVisuals:CreateToggle({ Name = "Bật Deadly Hitbox", CurrentValue = false, Callback = function(v) getgenv().V55.Hitbox = v end })
+TabVisuals:CreateSlider({ Name = "Kích Thước Hitbox", Range = {2, 30}, Increment = 1, CurrentValue = 5, Callback = function(v) getgenv().V55.HitboxSize = v end })
+TabVisuals:CreateColorPicker({ Name = "Màu Hitbox", Color = Color3.fromRGB(255,0,0), Callback = function(v) getgenv().V55.HitboxColor = v end })
+TabVisuals:CreateSlider({ Name = "Độ Trong Suốt Hitbox", Range = {0, 1}, Increment = 0.1, CurrentValue = 0.8, Callback = function(v) getgenv().V55.HitboxTrans = v end })
+
+-- --- PLAYER LIST ---
+local PlayerButtons = {}
+local function RefreshList()
+    for _, b in pairs(PlayerButtons) do b:Destroy() end
+    PlayerButtons = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local b = TabPlayers:CreateButton({
+                Name = "🎯 " .. p.DisplayName .. " (@" .. p.Name .. ")",
+                Callback = function() getgenv().V55.Target = p end
+            })
+            table.insert(PlayerButtons, b)
+        end
+    end
+end
+TabPlayers:CreateButton({ Name = "🔄 Làm mới danh sách", Callback = RefreshList })
+RefreshList()
+
+-- // --- 👁️ HỆ THỐNG RENDER (VẼ ESP & HITBOX) ---
+local ESPGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+ESPGui.Name = "Ghost_V55_Engine"
+
+RunService.RenderStepped:Connect(function()
+    -- Xóa tag của người đã thoát
+    for _, tag in pairs(ESPGui:GetChildren()) do
+        local pName = tag.Name:gsub("Tag_", "")
+        if not Players:FindFirstChild(pName) then tag:Destroy() end
+    end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local head = p.Character:FindFirstChild("Head")
+            local hum = p.Character:FindFirstChild("Humanoid")
+
+            if hrp and head and hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 3, 0))
+                local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+                
+                -- 1. ESP Name (Co giãn)
+                local tag = ESPGui:FindFirstChild("Tag_"..p.Name)
+                if getgenv().V55.ShowName and onScreen then
+                    if not tag then
+                        tag = Instance.new("TextLabel", ESPGui); tag.Name = "Tag_"..p.Name
+                        tag.BackgroundTransparency = 1; tag.Font = Enum.Font.GothamBold
+                        Instance.new("UIStroke", tag).Thickness = 1
+                    end
+                    -- Tính toán size theo khoảng cách (Càng xa càng nhỏ)
+                    local size = math.clamp(1000 / distance, 8, 14)
+                    tag.TextSize = size
+                    tag.TextColor3 = getgenv().V55.ESPColor
+                    tag.Text = p.DisplayName .. " (@" .. p.Name .. ")\n" .. math.floor(distance) .. "m"
+                    tag.Position = UDim2.new(0, pos.X - 100, 0, pos.Y - 20)
+                    tag.Size = UDim2.new(0, 200, 0, 20)
+                    tag.Visible = true
+                elseif tag then tag.Visible = false end
+
+                -- 2. Highlight Viền
+                local hl = p.Character:FindFirstChild("V55_HL")
+                if getgenv().V55.ShowESP then
+                    if not hl then hl = Instance.new("Highlight", p.Character); hl.Name = "V55_HL" end
+                    hl.OutlineColor = getgenv().V55.ESPColor
+                    hl.FillTransparency = 1
+                elseif hl then hl:Destroy() end
+
+                -- 3. Deadly Hitbox
+                if getgenv().V55.Hitbox then
+                    hrp.Size = Vector3.new(getgenv().V55.HitboxSize, getgenv().V55.HitboxSize, getgenv().V55.HitboxSize)
+                    hrp.Color = getgenv().V55.HitboxColor
+                    hrp.Transparency = getgenv().V55.HitboxTrans
+                    hrp.Material = Enum.Material.ForceField
+                    hrp.CanCollide = false
+                else
+                    hrp.Size = Vector3.new(2, 2, 1)
+                    hrp.Transparency = 1
+                end
+            else
+                -- Ẩn nếu chết
+                if ESPGui:FindFirstChild("Tag_"..p.Name) then ESPGui:FindFirstChild("Tag_"..p.Name).Visible = false end
+                if p.Character:FindFirstChild("V55_HL") then p.Character:FindFirstChild("V55_HL"):Destroy() end
             end
         end
-        return old_nc(self, ...)
-    end)
-    setreadonly(mt, true)
-    
-    -- Chặn trạng thái nhân vật bất thường
-    RunService.Stepped:Connect(function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Running)
-        end
-    end)
-end
-pcall(BypassBAC)
+    end
+end)
 
--- // --- UI MOBILE (CUSTOM) ---
-local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Size, OpenBtn.Position = UDim2.new(0, 45, 0, 45), UDim2.new(0, 10, 0, 150)
-OpenBtn.BackgroundColor3, OpenBtn.Text = Color3.fromRGB(0, 255, 100), "V38"
-OpenBtn.Font, OpenBtn.Draggable = Enum.Font.SourceSansBold, true
-Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
-
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size, Main.Position = UDim2.new(0, 220, 0, 430), UDim2.new(0.5, -110, 0.5, -215)
-Main.BackgroundColor3, Main.BorderSizePixel = Color3.fromRGB(15, 15, 15), 0
-Instance.new("UICorner", Main)
-
-local Title = Instance.new("TextLabel", Main)
-Title.Size, Title.Text = UDim2.new(1, 0, 0, 40), "GHOST ELITE V38"
-Title.BackgroundColor3, Title.TextColor3 = Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.SourceSansBold
-
-local Scroll = Instance.new("ScrollingFrame", Main)
-Scroll.Size, Scroll.Position = UDim2.new(1, -10, 1, -180), UDim2.new(0, 5, 0, 45)
-Scroll.BackgroundTransparency, Scroll.AutomaticCanvasSize = 1, Enum.AutomaticSize.Y
-Instance.new("UIListLayout", Scroll).Padding = UDim.new(0, 5)
-
--- Nút chức năng
-local function AddToggle(txt, color, var)
-    local btn = Instance.new("TextButton", Main)
-    btn.Size = UDim2.new(1, -20, 0, 35)
-    btn.BackgroundColor3 = color
-    btn.Text = txt .. ": OFF"
-    btn.Font, btn.TextColor3 = Enum.Font.SourceSansBold, Color3.fromRGB(255, 255, 255)
-    btn.MouseButton1Click:Connect(function()
-        getgenv().V38[var] = not getgenv().V38[var]
-        btn.Text = txt .. ": " .. (getgenv().V38[var] and "ON" or "OFF")
-        btn.BackgroundColor3 = getgenv().V38[var] and Color3.fromRGB(0, 180, 0) or color
-    end)
-    btn.Parent = Main -- Sắp xếp thủ công cho đẹp
-    Instance.new("UICorner", btn)
-    return btn
-end
-
-local shootBtn = AddToggle("AUTO SHOOT", Color3.fromRGB(100, 100, 0), "AutoShoot")
-shootBtn.Position = UDim2.new(0, 10, 1, -135)
-local jitterBtn = AddToggle("NÉ ĐẠN", Color3.fromRGB(60, 60, 60), "NeDan")
-jitterBtn.Position = UDim2.new(0, 10, 1, -90)
-local killBtn = AddToggle("TRUY SÁT", Color3.fromRGB(150, 0, 0), "Active")
-killBtn.Position = UDim2.new(0, 10, 1, -45)
-
-OpenBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
-
--- // --- LOGIC TRUY SÁT (SMOOTH TELEPORT) ---
+-- // --- 🚀 LOGIC DI CHUYỂN & AIM ---
 RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local target = getgenv().V38.Target
-    
-    if getgenv().V38.Active and target and target.Character and root then
-        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
-        if tRoot and target.Character.Humanoid.Health > 0 then
-            -- Tự động lấy vũ khí
-            if getgenv().V38.AutoEquip then
-                local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-                if tool then LocalPlayer.Character.Humanoid:EquipTool(tool) end
-            end
-            
-            -- Vị trí High-Back an toàn
-            local goal = (tRoot.CFrame * CFrame.new(0, 5, 4)).Position
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    if getgenv().V55.GodSpeed then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = false end end
+    end
+
+    if getgenv().V55.HighBack and getgenv().V55.Target and getgenv().V55.Target.Character then
+        local tRoot = getgenv().V55.Target.Character:FindFirstChild("HumanoidRootPart")
+        if tRoot and getgenv().V55.Target.Character.Humanoid.Health > 0 then
             root.Velocity = Vector3.new(0,0,0)
-            -- Dùng Lerp nhẹ để tránh BAC phát hiện dịch chuyển tức thời
-            root.CFrame = root.CFrame:Lerp(CFrame.new(goal, tRoot.Position), 0.5)
-        else
-            getgenv().V38.Active = false
+            root.CFrame = root.CFrame:Lerp(tRoot.CFrame * CFrame.new(0, 6, 4), 0.2)
         end
     end
-    -- Né đạn mạnh
-    if getgenv().V38.NeDan and root then
-        root.CFrame *= CFrame.new(math.sin(tick() * 35) * 2.8, 0, 0)
-    end
+
+    if getgenv().V55.NeDan then root.CFrame *= CFrame.new(math.sin(tick()*35)*2.5, 0, 0) end
 end)
 
--- // --- AUTO SHOOT ---
-task.spawn(function()
-    while task.wait(0.08) do
-        if getgenv().V38.AutoShoot and getgenv().V38.Target then
-            pcall(function()
-                local tChar = getgenv().V38.Target.Character
-                if tChar then
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                    task.wait(0.03)
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                end
-            end)
-        end
-    end
-end)
-
--- // --- ESP & DANH SÁCH TÊN (FIXED) ---
-task.spawn(function()
-    while task.wait(1.5) do
+-- Sticky Aim
+RunService.RenderStepped:Connect(function()
+    if getgenv().V55.StickyAim or getgenv().V55.AimLock then
+        local target, closest = nil, getgenv().V55.AimFOV
         for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                pcall(function()
-                    if not p.Character.Head:FindFirstChild("Tag") then
-                        local b = Instance.new("BillboardGui", p.Character.Head)
-                        b.Name, b.Size, b.AlwaysOnTop = "Tag", UDim2.new(0,100,0,50), true
-                        b.StudsOffset = Vector3.new(0,3,0)
-                        local l = Instance.new("TextLabel", b)
-                        l.Size, l.BackgroundTransparency, l.Text = UDim2.new(1,0,1,0), 1, p.Name
-                        l.TextColor3, l.Font, l.TextSize = Color3.fromRGB(255,255,0), "SourceSansBold", 14
-                        l.TextStrokeTransparency = 0
-                    end
-                    if not p.Character:FindFirstChild("HL") then
-                        local h = Instance.new("Highlight", p.Character)
-                        h.Name, h.FillColor = "HL", Color3.fromRGB(255,0,0)
-                    end
-                end)
-            end
-        end
-        -- Cập nhật List chọn tên
-        pcall(function()
-            for _, v in pairs(Scroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer then
-                    local b = Instance.new("TextButton", Scroll)
-                    b.Size, b.Text = UDim2.new(1,0,0,30), p.Name
-                    b.BackgroundColor3, b.TextColor3 = Color3.fromRGB(40,40,40), Color3.fromRGB(255,255,255)
-                    b.MouseButton1Click:Connect(function() getgenv().V38.Target = p end)
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.Humanoid.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                if onScreen then
+                    local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                    if mag < closest then closest = mag; target = p end
                 end
             end
-        end)
+        end
+        if target and (UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) then
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position), getgenv().V55.AimSmooth)
+        end
     end
 end)
 
-print("V38 BYPASS BAC_4 LOADED")
+Rayfield:Notify({Title = "GHOST V55 ACTIVE", Content = "Đã fix ESP & Deadly Hitbox!", Duration = 5})
